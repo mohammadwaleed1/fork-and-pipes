@@ -1,0 +1,57 @@
+#include <stdio.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <stdlib.h>
+
+int main() {
+    int pipefds[2];
+    int pid;
+    int x = 5, y, z;
+
+    if (pipe(pipefds) == -1) {
+        perror("Pipe failed");
+        return 1;
+    }
+
+    pid = fork();
+
+    if (pid != 0) { // PARENT
+        printf("Parent: Writing %d to pipe...\n", x);
+        write(pipefds[1], &x, sizeof(x));
+        
+        // Parent is done writing, so we close the write end
+        close(pipefds[1]); 
+
+        // CRITICAL: We still need to wait for the child to take the data
+        // otherwise Parent might read its own data back immediately.
+        sleep(1); 
+
+        printf("Parent: Now attempting to read response...\n");
+        read(pipefds[0], &y, sizeof(y));
+        printf("Parent: Received %d back from child!\n", y);
+
+        close(pipefds[0]);
+        wait(NULL);
+    } 
+    else { // CHILD
+        // 1. Read the data
+        read(pipefds[0], &z, sizeof(z));
+        printf("Child: Received %d. Closing read end now.\n", z);
+        
+        // As you requested: Close read end immediately after use
+        close(pipefds[0]); 
+
+        z = z * 3;
+
+        // 2. Write the result back
+        printf("Child: Writing %d back to pipe...\n", z);
+        write(pipefds[1], &z, sizeof(z));
+        
+        // As you requested: Close write end immediately after use
+        close(pipefds[1]); 
+        
+        exit(0);
+    }
+
+    return 0;
+}
