@@ -1,0 +1,63 @@
+//writing end code
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <string.h>
+
+#define FIFO_FILE "/tmp/myfifo"
+
+int main() {
+    int fd;
+    char buffer[BUFSIZ];
+    ssize_t num_bytes;
+
+    // Create the named pipe (FIFO)
+    mkfifo(FIFO_FILE, 0666);
+
+    // Open the named pipe for writing (producer)
+    fd = open(FIFO_FILE, O_WRONLY);
+    if (fd == -1) {
+        perror("open");
+        exit(EXIT_FAILURE);
+    }
+
+    while (1) { // Producer loop
+        printf("Producer: Enter a message (or 'exit' to quit): ");
+        fgets(buffer, BUFSIZ, stdin);
+
+        // Write input to the named pipe
+        num_bytes = write(fd, buffer, strlen(buffer));
+        if (num_bytes == -1) {
+            perror("write");
+            exit(EXIT_FAILURE);
+        }
+
+        if (strncmp(buffer, "exit", 4) == 0) { // Check for exit condition
+            break;
+        }
+    }
+
+    close(fd); // Close the named pipe
+    unlink(FIFO_FILE); // Remove the named pipe from the file system
+
+    return 0;
+}
+
+// The Consumer (Reader) side
+int fd = open(FIFO_FILE, O_RDONLY); // Open for READING
+char buffer[BUFSIZ];
+
+while (1) {
+    // read() returns the number of bytes received
+    ssize_t n = read(fd, buffer, BUFSIZ); 
+    if (n > 0) {
+        buffer[n] = '\0'; // Null-terminate the string
+        printf("Consumer received: %s", buffer);
+    } else if (n == 0) {
+        printf("Writer closed the pipe. Exiting...\n");
+        break;
+    }
+}
