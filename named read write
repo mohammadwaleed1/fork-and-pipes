@@ -1,0 +1,64 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <string.h>
+
+int main() {
+    int fd_req, fd_res;
+    char buffer[1024];
+
+    // 1. Open the request pipe to SEND the number
+    // This blocks until the Processor opens it for reading
+    fd_req = open("fifo_req", O_WRONLY);
+    
+    printf("Requester: Enter a number: ");
+    fgets(buffer, sizeof(buffer), stdin); // Get input from keyboard
+    
+    write(fd_req, buffer, strlen(buffer)); // Write to FIFO
+    close(fd_req);
+
+    // 2. Open the response pipe to READ the answer
+    // This blocks until the Processor writes back
+    fd_res = open("fifo_res", O_RDONLY);
+    int n = read(fd_res, buffer, sizeof(buffer) - 1);
+    buffer[n] = '\0';
+    
+    printf("Requester: Received result: %s\n", buffer);
+    close(fd_res);
+
+    return 0;
+}
+////////
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <string.h>
+
+int main() {
+    int fd_req, fd_res;
+    char buffer[1024];
+
+    printf("Processor: Waiting for a request...\n");
+
+    // 1. Open request pipe to READ the incoming number
+    fd_req = open("fifo_req", O_RDONLY);
+    int n = read(fd_req, buffer, sizeof(buffer) - 1);
+    buffer[n] = '\0';
+    close(fd_req);
+
+    // 2. Process the data (* 2)
+    int value = atoi(buffer);
+    int result = value * 2;
+    sprintf(buffer, "%d", result);
+
+    // 3. Open response pipe to WRITE the result back
+    fd_res = open("fifo_res", O_WRONLY);
+    write(fd_res, buffer, strlen(buffer));
+    close(fd_res);
+
+    printf("Processor: Handled %d, sent back %d.\n", value, result);
+
+    return 0;
+}
