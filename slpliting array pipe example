@@ -1,0 +1,57 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/wait.h>
+
+int main() {
+    int arr[10] = {12, 7, 22, 15, 8, 33, 40, 19, 50, 21};
+    int fds[2];
+    
+    if (pipe(fds) == -1) {
+        perror("Pipe failed");
+        return 1;
+    }
+
+    pid_t pid = fork();
+
+    if (pid < 0) {
+        perror("Fork failed");
+        return 1;
+    }
+
+    if (pid > 0) {
+        // === PARENT PROCESS ===
+        close(fds[0]); // Close read end
+
+        printf("[Parent] Checking first 5 numbers:\n");
+        for (int i = 0; i < 5; i++) {
+            if (arr[i] % 2 == 0) printf("  %d is Even\n", arr[i]);
+            else printf("  %d is Odd\n", arr[i]);
+        }
+
+        // Send the REST of the array (starting from index 5)
+        // We pass the address of arr[5] and send 5 integers worth of data
+        write(fds[1], &arr[5], sizeof(int) * 5);
+        
+        close(fds[1]);
+        wait(NULL); 
+    } 
+    else {
+        // === CHILD PROCESS ===
+        close(fds[1]); // Close write end
+
+        int received_part[5];
+        read(fds[0], received_part, sizeof(int) * 5);
+
+        printf("\n[Child] Received last 5 numbers and checking:\n");
+        for (int i = 0; i < 5; i++) {
+            if (received_part[i] % 2 == 0) printf("  %d is Even\n", received_part[i]);
+            else printf("  %d is Odd\n", received_part[i]);
+        }
+
+        close(fds[0]);
+        exit(0);
+    }
+
+    return 0;
+}
