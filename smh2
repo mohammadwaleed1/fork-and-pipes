@@ -17,7 +17,7 @@ int main() {
  
     // Map it
     ptr = (char *)mmap(0, SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
- 
+    sleep(5);
     // Read from shared memory
     printf("%s\n", (char *)ptr);
  
@@ -58,6 +58,6 @@ int main() {
     ptr += strlen(msg0);
     sprintf(ptr, "%s", msg1);
     ptr += strlen(msg1);
- 
+    sleep(5);
     return 0;
 }
